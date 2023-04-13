@@ -23,21 +23,7 @@ public:
     }
 };
 
-/**
- * @brief 自定义任务计划，如：线程池执行等等
- *
- */
-class SingletonExecute : public utils::crontab::CExecute {
-public:
-    SingletonExecute() = default;
-
-    void execute() override {
-        // TODO: 自定义流程
-        utils::crontab::CExecute::execute();
-    }
-};
-
-typedef Singleton<SingletonExecute> TSingletonExecute;
+typedef Singleton<utils::crontab::CExecute> TSingletonExecute;
 
 int main(int argc, char* argv[]) {
     // 小任务可在业务模块，用lambda表达式注册到定时任务中
@@ -51,10 +37,11 @@ int main(int argc, char* argv[]) {
         .register_crontab(std::make_shared<TestCrontab>(
             utils::crontab::Crontab::EN_IMMEDIATELY_EXECUTE, 5));
 
-    while (true) {
-        DEF_GET_INSTANCE(TSingletonExecute).execute();
-        usleep(100 * 1000);
-    }
+    // TODO: 设置全局线程运行标记
+    DEF_GET_INSTANCE(TSingletonExecute).set_runnig([]() -> bool {
+        return true;
+    });
 
+    DEF_GET_INSTANCE(TSingletonExecute).execute();
     return 0;
 }

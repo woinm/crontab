@@ -1,6 +1,7 @@
 #include "execute.h"
 #include "crontab.h"
 #include <mutex>
+#include <unistd.h>
 
 namespace utils {
 namespace crontab {
@@ -8,18 +9,33 @@ namespace crontab {
 CExecute::CExecute() {}
 
 void CExecute::execute() {
-    std::unique_lock<std::mutex> lock(m_mutex);
-    CrontabPtrSet::iterator it = m_crontabs.begin();
-    for (; it != m_crontabs.end();) {
-        CrontabPtr plan = (*it);
-        if (!plan->is_expire()) {
+    auto do_execute = [this]() {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        CrontabPtrSet::iterator it = m_crontabs.begin();
+        for (; it != m_crontabs.end();) {
+            CrontabPtr plan = (*it);
+
+            if (plan->is_end()) {
+                it = m_crontabs.erase(it);
+                continue;
+            }
+
             ++it;
-            continue;
+            if (!plan->is_expire()) {
+                continue;
+            }
+            if (nullptr != m_post) {
+                m_post(std::bind(&Crontab::execute_plan, plan));
+            } else {
+                plan->execute_plan();
+            }
         }
-        // TODO: post to thread pools
-        plan->execute_plan();
-        plan->is_end() ? it = m_crontabs.erase(it) : ++it;
-    }
+    };
+
+    do {
+        do_execute();
+        usleep(500 * 1000);
+    } while (m_running());
 }
 
 bool CExecute::register_crontab(CrontabPtr plan) {

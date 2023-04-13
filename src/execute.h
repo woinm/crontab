@@ -8,6 +8,7 @@
 
 #include "crontab.h"
 
+#include <functional>
 #include <mutex>
 #include <set>
 #include <time.h>
@@ -69,10 +70,20 @@ public:
      */
     CExecute();
 
+    inline void set_post(std::function<void(std::function<void()>)> post) {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_post = post;
+    }
+
+    inline void set_runnig(std::function<bool()> running) {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_running = running;
+    }
+
     /**
      * @brief execute 扫描可执行任务，并将可执行任务post到线程池中执行
      */
-    virtual void execute();
+    void execute();
 
     /**
      * @brief register_crontab  注册可执行任务
@@ -92,6 +103,9 @@ private:
     std::mutex m_mutex;
     /// @brief 存放任务执行对象
     std::set<CrontabPtr> m_crontabs;
+
+    std::function<void(std::function<void()>)> m_post{nullptr};
+    std::function<bool()> m_running;
 };
 
 } // namespace crontab

@@ -6,6 +6,8 @@
 #define CRONTAB_H
 
 #include <functional>
+#include <memory>
+#include <time.h>
 
 namespace utils {
 namespace crontab {
@@ -34,6 +36,7 @@ public:
     }
 
     virtual ~Crontab() {}
+
     /**
      * @brief is_expire 检查是否满足任务执行条件
      * @return
